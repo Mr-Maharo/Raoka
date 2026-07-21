@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="mg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hetsika.ka v1.0 - Tilemap Editor Gasy</title>
+    <style>
+        :root { --bg:#1a1a2e; --panel:#16213e; --btn:#0f3460; --hover:#533483; --accent:#FFD700; --txt:#fff; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Arial,sans-serif; }
+        body { background:var(--bg); color:var(--txt); overflow:hidden; user-select:none; }
+        #app { display:flex; height:100vh; }
+        #ankavia { width:320px; background:var(--panel); border-right:3px solid var(--accent); display:flex; flex-direction:column; }
+        #loha { padding:15px; background:var(--btn); border-bottom:2px solid var(--accent); text-align:center; }
+        #loha h1 { color:var(--accent); font-size:20px; margin-bottom:5px; }
+       .tabilao { flex:1; overflow-y:auto; padding:10px; }
+       .tabilao::-webkit-scrollbar { width:8px; }
+       .tabilao::-webkit-scrollbar-thumb { background:var(--accent); border-radius:4px; }
+       .fizarana { margin-bottom:12px; background:var(--bg); border-radius:8px; overflow:hidden; }
+       .lohateny { padding:10px; background:var(--btn); cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+       .lohateny:hover { background:var(--hover); }
+       .lohateny h3 { font-size:13px; color:var(--accent); }
+       .votoaty { padding:10px; display:none; }
+       .fizarana.misokatra.votoaty { display:block; }
+        button { width:100%; padding:9px; margin:3px 0; background:var(--btn); border:2px solid var(--accent); color:var(--txt); cursor:pointer; border-radius:5px; font-size:12px; transition:0.2s; }
+        button:hover { background:var(--hover); transform:translateY(-1px); }
+        button.mavita { background:#228B22; border-color:#00FF00; }
+        button.loza { background:#8B0000; border-color:#FF0000; }
+        input,select,textarea { width:100%; padding:7px; margin:3px 0; background:var(--btn); border:1px solid var(--accent); color:var(--txt); border-radius:4px; font-size:12px; }
+        input[type="color"] { height:35px; cursor:pointer; }
+        label { display:block; margin-top:6px; font-size:11px; color:#aaa; }
+        #tilesetBox { width:100%; background:#000; border:2px solid var(--accent); margin:8px 0; position:relative; overflow:auto; max-height:280px; }
+        #tileset { image-rendering:pixelated; cursor:crosshair; display:block; }
+       .tile-safidy { position:absolute; border:3px solid var(--accent); pointer-events:none; box-shadow:0 0 15px var(--accent); }
+       .sosona-item { padding:7px; margin:3px 0; background:var(--btn); border-radius:4px; display:flex; align-items:center; gap:6px; }
+       .sosona-item.voafidy { background:var(--hover); border:2px solid var(--accent); }
+       .sosona-item input[type="checkbox"] { width:auto; }
+       .sosona-item input[type="text"] { flex:1; margin:0; padding:4px; }
+       .sosona-item button { width:auto; padding:3px 6px; margin:0; font-size:10px; }
+        #ankavanana { flex:1; position:relative; overflow:hidden; background:#2a2a4e; }
+        #barFitaovana { position:absolute; top:10px; left:10px; right:10px; background:var(--panel); border:2px solid var(--accent); border-radius:8px; padding:8px; display:flex; gap:8px; align-items:center; z-index:100; flex-wrap:wrap; }
+        #barFitaovana button { width:auto; padding:7px 12px; margin:0; font-size:11px; }
+        #barFitaovana.fisarahana { width:2px; height:25px; background:var(--accent); }
+        #barFitaovana.mavita { background:var(--accent); color:var(--bg); font-weight:bold; }
+        #canvasBox { position:absolute; top:65px; left:10px; right:10px; bottom:35px; overflow:auto; background:#1a1a2e; border:2px solid var(--accent); border-radius:8px; }
+        #canvas { display:block; cursor:crosshair; image-rendering:pixelated; }
+        #info { position:absolute; bottom:5px; left:10px; right:10px; background:var(--panel); border:2px solid var(--accent); border-radius:8px; padding:6px 12px; font-size:11px; display:flex; gap:15px; }
+       .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; }
+       .modal.misokatra { display:flex; }
+       .modal-box { background:var(--panel); border:3px solid var(--accent); border-radius:10px; padding:20px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto; }
+       .modal-lohateny { color:var(--accent); margin-bottom:15px; font-size:17px; }
+       .modal-hidy { float:right; cursor:pointer; font-size:24px; color:var(--accent); }
+       .andalana { display:flex; gap:8px; }
+       .andalana > * { flex:1; }
+       .kely { font-size:10px; color:#888; }
+       .centro { text-align:center; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- ANKAVIA: PANEL -->
+        <div id="ankavia">
+            <div id="loha">
+                <h1>🎮 HETSIKA.KA</h1>
+                <div class="kely">Tilemap Editor Gasy v1.0</div>
+            </div>
+            <div class="tabilao">
+                <!-- RAKITRA -->
+                <div class="fizarana misokatra">
+                    <div class="lohateny" onclick="toggle(this)"><h3>📁 Rakitra.hetsika</h3><span>▼</span></div>
+                    <div class="votoaty">
+                        <button onclick="vaovao()">📄 Vaovao</button>
+                        <button onclick="sokafy()">📂 Sokafy.hetsika</button>
+                        <button onclick="tehirizo()">💾 Tehirizo.hetsika</button>
+                        <button onclick="manondrana('json')">📤 Export JSON</button>
+                        <button onclick="manondrana('png')">🖼️ Export PNG</button>
+                        <button onclick="mamoronaAPK()" class="mavita">📱 Mamorona APK</button>
+                        <input type="file" id="faylAmpidirina" accept=".hetsika,.json" style="display:none">
+                    </div>
+                </div>
+
+                <!-- SARINTANY -->
+                <div class="fizarana misokatra">
+                    <div class="lohateny" onclick="toggle(this)"><h3>🗺️ Sarintany</h3><span>▼</span></div>
+                    <div class="votoaty">
+                        <label>Anarana:</label>
+                        <input type="text" id="anarana" value="Sarintany1">
+                        <div class="andalana">
+                            <div><label>Sakany:</label><input type="number" id="sakany" value="50" min="10" max="500"></div>
+                            <div><label>Haavony:</label><input type="number" id="haavony" value="40" min="10" max="500"></div>
+                        </div>
+                        <label>Haben'ny Tile:</label>
+                        <input type="number" id="habeTile" value="32" min="8" max="128" step="8">
+                        <button onclick="havaozyHabe()">🔄 Havaozy Habe</button>
+                    </div>
+                </div>
+
+                <!-- TILESET -->
+                <div class="fizarana misokatra">
+                    <div class="lohateny" onclick="toggle(this)"><h3>🎨 Tileset</h3><span>▼</span></div>
+                    <div class="votoaty">
+                        <input type="file" id="saryTileset" accept="image/*">
+                        <div id="tilesetBox">
+                            <canvas id="tileset"></canvas>
+                            <div class="tile-safidy" id="tileSafidy"></div>
+                        </div>
+                        <div class="kely">Tile ID: <span id="idTile">1</span> | Tsindrio hisafidy</div>
+                    </div>
+                </div>
+
+                <!-- SOSONA -->
+                <div class="fizarana misokatra">
+                    <div class="lohateny" onclick="toggle(this)"><h3>📚 Sosona</h3><span>▼</span></div>
+                    <div class="votoaty">
+                        <div id="lisitraSosona"></div>
+                        <button onclick="ampioSosona()">+ Sosona Vaovao</button>
+                        <button onclick="fafaoSosona()" class="loza">🗑️ Fafao</button>
+                    </div>
+                </div>
+
+                <!-- FITAOVANA -->
+                <div class="fizarana">
+                    <div class="lohateny" onclick="toggle(this)"><h3>🛠️ Fitaovana</h3><span>▶</span></div>
+                    <div class="votoaty">
+                        <button id="fitBorosy" onclick="safidioFitaovana('borosy')" class="mavita">🖌️ Borosy (B)</button>
+                        <button id="fitFameno" onclick="safidioFitaovana('fameno')">🪣 Fameno (F)</button>
+                        <button id="fitFamafana" onclick="safidioFitaovana('famafana')">🧹 Famafana (E)</button>
+                        <button id="fitFifidianana" onclick="safidioFitaovana('fifidianana')">⬚ Fifidianana (R)</button>
+                        <button id="fitMifandona" onclick="safidioFitaovana('mifandona')">🧱 Collision (C)</button>
+                        <button id="fitZavatra" onclick="safidioFitaovana('zavatra')">📍 Zavatra (O)</button>
+                    </div>
+                </div>
+
+                <!-- MIFANDONA -->
+                <div class="fizarana">
+                    <div class="lohateny" onclick="toggle(this)"><h3>🧱 Collision</h3><span>▶</span></div>
+                    <div class="votoaty">
+                        <button onclick="fadioMifandona()">Fafao Rehetra</button>
+                        <div class="kely">Tsindrio sy tariho hamorona efajoro collision</div>
+                    </div>
+                </div>
+
+                <!-- ZAVATRA -->
+                <div class="fizarana">
+                    <div class="lohateny" onclick="toggle(this)"><h3>📍 Zavatra/Object</h3><span>▶</span></div>
+                    <div class="votoaty">
+                        <label>Karazana:</label>
+                        <select id="karazanaZavatra">
+                            <option value="spawn">Spawn Point</option>
+                            <option value="fahavalo">Fahavalo</option>
+                            <option value="zavatra">Item</option>
+                            <option value="faritra">Faritra Trigger</option>
+                            <option value="fivoahana">Fivoahana</option>
+                            <option value="vavahady">Vavahady</option>
+                        </select>
+                        <label>Anarana:</label>
+                        <input type="text" id="anaranaZavatra" placeholder="anarana">
+                        <label>Hetsika (JS):</label>
+                        <textarea id="hetsikaZavatra" rows="2" placeholder="mandeha 'Ambaratonga2'"></textarea>
+                        <div class="kely">Tsindrio amin'ny sarintany hanampy</div>
+                        <button onclick="fadioZavatra()">Fafao Zavatra Rehetra</button>
+                    </div>
+                </div>
+
+                <!-- HETSIKA TILE -->
+                <div class="fizarana">
+                    <div class="lohateny" onclick="toggle(this)"><h3>⚡ Hetsika Tile</h3><span>▶</span></div>
+                    <div class="votoaty">
+                        <button onclick="sokafyModalHetsika()">+ Animation Vaovao</button>
+                        <div id="lisitraHetsika"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANKAVANANA: SEHATRA -->
+        <div id="ankavanana">
+            <div id="barFitaovana">
+                <button id="btnBorosy" onclick="safidioFitaovana('borosy')" class="mavita" title="Borosy (B)">🖌️</button>
+                <button onclick="safidioFitaovana('fameno')" title="Fameno (F)">🪣</button>
+                <button onclick="safidioFitaovana('famafana')" title="Famafana (E)">🧹</button>
+                <button onclick="safidioFitaovana('fifidianana')" title="Fifidianana (R)">⬚</button>
+                <div class="fisarahana"></div>
+                <button onclick="zoom(-0.2)" title="Zoom Out">🔍-</button>
+                <span id="zoomInfo">100%</span>
+                <button onclick="zoom(0.2)" title="Zoom In">🔍+</button>
+                <button onclick="zoom(0,true)" title="Reset">⊡</button>
+                <div class="fisarahana"></div>
+                <button onclick="toggleGrid()" id="btnGrid" title="Grid (G)">⊞</button>
+                <button onclick="toggleMifandona()" id="btnMifandona" title="Collision">🧱</button>
+                <button onclick="toggleZavatra()" id="btnZavatra" title="Zavatra">📍</button>
+                <div class="fisarahana"></div>
+                <button onclick="manafoana()" title="Manafoana (Ctrl+Z)">↶</button>
+                <button onclick="amerina()" title="Amerina (Ctrl+Y)">↷</button>
+            </div>
+
+            <div id="canvasBox">
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <div id="info">
+                <span>X: <b id="posX">0</b></span>
+                <span>Y: <b id="posY">0</b></span>
+                <span>Tile: <b id="posTileX">0</b>,<b id="posTileY">0</b></span>
+                <span>Sosona: <b id="posSosona">Tany</b></span>
+                <span>ID: <b id="posTileID">0</b></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HETSIKA -->
+    <div id="modalHetsika" class="modal">
+        <div class="modal-box">
+            <span class="modal-hidy" onclick="hidioModal('modalHetsika')">&times;</span>
+            <h2 class="modal-lohateny">⚡ Hetsika Tile Vaovao</h2>
+            <label>ID Tile fototra:</label>
+            <input type="number" id="hetsikaId" value="1" min="1">
+            <label>Sary (ID misaraka amin'ny,):</label>
+            <input type="text" id="hetsikaSary" placeholder="1,2,3,4" value="1,2,3,2">
+            <label>Hafainganam (ms):</label>
+            <input type="number" id="hetsikaHafainganam" value="200" min="50" max="2000">
+            <button onclick="tehirizoHetsika()" class="mavita">Tehirizo</button>
+            <button onclick="hidioModal('modalHetsika')">Hanafoana</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== TOETRA GLOBAL =====
+        let tetikasa = {
+            anarana: "Sarintany1",
+            dikan: "1.0",
+            sakany: 50,
+            haavony: 40,
+            tsirairay: {sakany: 32, haavony: 32},
+            tileset: {sary: "", sakany: 0, haavony: 0, data: null},
+            sosona: [{anarana: "Tany", data: [], hita: true, mangarahara: 1}],
+            mifandona: [],
+            hetsika: [],
+            zavatra: []
+        };
+
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let tilesetCanvas = document.getElementById('tileset');
+        let tilesetCtx = tilesetCanvas.getContext('2d');
+        let tilesetImg = null;
+
+        let tileVoafidy = 1;
+        let sosonaAnkehitriny = 0;
+        let fitaovana = "borosy";
+        let voatsindry = false;
+        let zoom = 1;
+        let asehoyGrid = true, asehoyMifandona = true, asehoyZavatra = true;
+
+        let tantara = [];
+        let tantaraIdx = -1;
+        let mifidyEfajoro = null;
+
+        // ===== FANOMANANA =====
+        function atombohy() {
+            havaozyHabe();
+            mamoronaData();
+            mihainoEvent();
+            soraty();
+            setInterval(soraty, 50);
+        }
+
+        function havaozyHabe() {
+            tetikasa.sakany = parseInt(document.getElementById('sakany').value);
+            tetikasa.haavony = parseInt(document.getElementById('haavony').value);
+            tetikasa.tsirairay.sakany = parseInt(document.getElementById('habeTile').value);
+            tetikasa.tsirairay.haavony = tetikasa.tsirairay.sakany;
+            tetikasa.anarana = document.getElementById('anarana').value;
+
+            canvas.width = tetikasa.sakany * tetikasa.tsirairay.sakany;
+            canvas.height = tetikasa.haavony * tetikasa.tsirairay.haavony;
+
+            mamoronaData();
+        }
+
+        function mamoronaData() {
+            let habe = tetikasa.sakany * tetikasa.haavony;
+            tetikasa.sosona.forEach(s => {
+                if (s.data.length!== habe) {
+                    let dataVaovao = new Array(habe).fill(0);
+                    for (let i = 0; i < Math.min(s.data.length, habe); i++) dataVaovao[i] = s.data[i];
+                    s.data = dataVaovao;
+                }
+            });
+            havaozyLisitraSosona();
+        }
+
+        // ===== FANDOKAFANA =====
+        function soraty() {
+            ctx.fillStyle = '#2a2a4e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Sosona
+            tetikasa.sosona.forEach((s, si) => {
+                if (!s.hita) return;
+                ctx.globalAlpha = s.mangarahara;
+
+                for (let y = 0; y < tetikasa.haavony; y++) {
+                    for (let x = 0; x < tetikasa.sakany; x++) {
+                        let id = s.data[y * tetikasa.sakany + x];
+                        if (id === 0 ||!tilesetImg) continue;
+
+                        let cols = Math.floor(tetikasa.tileset.sakany / tetikasa.tsirairay.sakany);
+                        let tx = ((id - 1) % cols) * tetikasa.tsirairay.sakany;
+                        let ty = Math.floor((id - 1) / cols) * tetikasa.tsirairay.haavony;
+
+                        // Animation
+                        let h = tetikasa.hetsika.find(h => h.id === id);
+                        if (h) {
+                            let frame = Math.floor(Date.now() / h.hafainganam) % h.sary.length;
+                            let idV = h.sary[frame];
+                            tx = ((idV - 1) % cols) * tetikasa.tsirairay.sakany;
+                            ty = Math.floor((idV - 1) / cols) * tetikasa.tsirairay.haavony;
+                        }
+
+                        ctx.drawImage(tilesetImg, tx, ty, tetikasa.tsirairay.sakany, tetikasa.tsirairay.haavony,
+                            x * tetikasa.tsirairay.sakany, y * tetikasa.tsirairay.haavony,
+                            tetikasa.tsirairay.sakany, tetikasa.tsirairay.haavony);
+                    }
+                }
+            });
+            ctx.globalAlpha = 1;
+
+            // Grid
+            if (asehoyGrid) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x <= tetikasa.sakany; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * tetikasa.tsirairay.sakany, 0);
+                    ctx.lineTo(x * tetikasa.tsirairay.sakany, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= tetikasa.haavony; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * tetikasa.tsirairay.haavony);
+                    ctx.lineTo(canvas.width, y * tetikasa.tsirairay.haavony);
+                    ctx.stroke();
+                }
+            }
+
+            // Mifandona
+            if (asehoyMifandona) {
+                ctx.strokeStyle = '#FF0000';
+                ctx.fillStyle = 'rgba(255,0,0,0.2)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                tetikasa.mifandona.forEach(m => {
+                    ctx.fillRect(m.x * tetikasa.tsirairay.sakany, m.y * tetikasa.tsirairay.haavony,
+                        m.sakany * tetikasa.tsirairay.sakany, m.haavony * tetikasa.tsirairay.haavony);
+                    ctx.strokeRect(m.x * tetikasa.tsirairay.sakany, m.y * tetikasa.tsirairay.haavony,
+                        m.sakany * tetikasa.tsirairay.sakany, m.haavony * tetikasa.tsirairay.haavony);
+                });
+                ctx.setLineDash([]);
+            }
+
+            // Zavatra
+            if (asehoyZavatra) {
+                tetikasa.zavatra.forEach(z => {
+                    let loko = {spawn:'#00FF00', fahavalo:'#FF0000', zavatra:'#0000FF', faritra:'#FF00FF', fivoahana:'#FFFF00', vavahady:'#00FFFF'}[z.karazana] || '#FFF';
+                    ctx.fillStyle = loko;
+                    ctx.globalAlpha = 0.6;
+                    ctx.fillRect(z.x * tetikasa.tsirairay.sakany, z.y * tetikasa.tsirairay.haavony,
+                        (z.sakany || 1) * tetikasa.tsirairay.sakany, (z.haavony || 1) * tetikasa.tsirairay.haavony);
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = '10px Arial';
+                    ctx.fillText(z.karazana, z.x * tetikasa.tsirairay.sakany + 2, z.y * tetikasa.tsirairay.haavony + 12);
+                });
+            }
+        }
+
+        // ===== EVENT =====
+        function mihainoEvent() {
+            canvas.addEventListener('mousedown', e => {
+                voatsindry = true;
+                ataovyHetsika(e);
+            });
+            canvas.addEventListener('mousemove', e => {
+                let rect = canvas.getBoundingClientRect();
+                let x = Math.floor((e.clientX - rect.left) / tetikasa.tsirairay.sakany);
+                let y = Math.floor((e.clientY - rect.top) / tetikasa.tsirairay.haavony);
+                document.getElementById('posX').textContent = Math.floor(e.clientX - rect.left);
+                document.getElementById('posY').textContent = Math.floor(e.clientY - rect.top);
+                document.getElementById('posTileX').textContent = x;
+                document.getElementById('posTileY').textContent = y;
+                document.getElementById('posSosona').textContent = tetikasa.sosona[sosonaAnkehitriny].anarana;
+                document.getElementById('posTileID').textContent = tetikasa.sosona[sosonaAnkehitriny].data[y * tetikasa.sakany + x] || 0;
+                if (voatsindry) ataovyHetsika(e);
+            });
+            canvas.addEventListener('mouseup', () => {
+                voatsindry = false;
+                tehirizoTantara();
+            });
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            document.addEventListener('keydown', e => {
+                if (e.ctrlKey && e.key === 'z') { e.preventDefault(); manafoana(); }
+                if (e.ctrlKey && e.key === 'y') { e.preventDefault(); amerina(); }
+                if (e.ctrlKey && e.key === 's') { e.preventDefault(); tehirizo(); }
+                if (e.key === 'b') safidioFitaovana('borosy');
+                if (e.key === 'f') safidioFitaovana('fameno');
+                if (e.key === 'e') safidioFitaovana('famafana');
+                if (e.key === 'r') safidioFitaovana('fifidianana');
+                if (e.key === 'g') toggleGrid();
+            });
+        }
+
+        function ataovyHetsika(e) {
+            let rect = canvas.getBoundingClientRect();
+            let x = Math.floor((e.clientX - rect.left) / tetikasa.tsirairay.sakany);
+            let y = Math.floor((e.clientY - rect.top) / tetikasa.tsirairay.haavony);
+            if (x < 0 || y < 0 || x >= tetikasa.sakany || y >= tetikasa.haavony) return;
+
+            if (fitaovana === "borosy") {
+                tetikasa.sosona[sosonaAnkehitriny].data[y * tetikasa.sakany + x] = tileVoafidy;
+            } else if (fitaovana === "famafana") {
+                tetikasa.sosona[sosonaAnkehitriny].data[y * tetikasa.sakany + x] = 0;
+            } else if (fitaovana === "fameno") {
+                fameno(x, y, tetikasa.sosona[sosonaAnkehitriny].data[y * tetikasa.sakany + x], tileVoafidy);
+            } else if (fitaovana === "mifandona") {
+                if (!mifidyEfajoro) mifidyEfajoro = {x, y};
+            } else if (fitaovana === "zavatra") {
+                let karazana = document.getElementById('karazanaZavatra').value;
+                let anarana = document.getElementById('anaranaZavatra').value || karazana;
+                let hetsika = document.getElementById('hetsikaZavatra').value;
+                tetikasa.zavatra.push({karazana, anarana, x, y, sakany: 1, haavony: 1, hetsika});
+            }
+        }
+
+        canvas.addEventListener('mouseup', e => {
+            if (fitaovana === "mifandona" && mifidyEfajoro) {
+                let rect = canvas.getBoundingClientRect();
+                let x2 = Math.floor((e.clientX - rect.left) / tetikasa.tsirairay.sakany);
+                let y2 = Math.floor((e.clientY - rect.top) / tetikasa.tsirairay.haavony);
+                tetikasa.mifandona.push({
+                    x: Math.min(mifidyEfajoro.x, x2),
+                    y: Math.min(mifidyEfajoro.y, y2),
+                    sakany: Math.abs(x2 - mifidyEfajoro.x) + 1,
+                    haavony: Math.abs(y2 - mifidyEfajoro.y) + 1
+                });
+                mifidyEfajoro = null;
+            }
+        });
+
+        function fameno(x, y, tanjona, vaovao) {
+            if (tanjona === vaovao) return;
+            let s = tetikasa.sosona[sosonaAnkehitriny].data;
+            let idx = y * tetikasa.sakany + x;
+            if (x < 0 || y < 0 || x >= tetikasa.sakany || y >= tetikasa.haavony || s[idx]!== tanjona) return;
+            s[idx] = vaovao;
+            fameno(x + 1, y, tanjona, vaovao);
+            fameno(x - 1, y, tanjona, vaovao);
+            fameno(x, y + 1, tanjona, vaovao);
+            fameno(x, y - 1, tanjona, vaovao);
+        }
+
+        // ===== FITAOVANA =====
+        function safidioFitaovana(f) {
+            fitaovana = f;
+            document.querySelectorAll('[id^="fit"]').forEach(b => b.classList.remove('mavita'));
+            document.getElementById('fit' + f.charAt(0).toUpperCase() + f.slice(1))?.classList.add('mavita');
+            document.getElementById('fit' + f.charAt(0).toUpperCase() + f.slice(1) + '2')?.classList.add('mavita');
+        }
+
+        function toggle(el) {
+            el.parentElement.classList.toggle('misokatra');
+            el.querySelector('span').textContent = el.parentElement.classList.contains('misokatra')? '▼' : '▶';
+        }
+
+        function zoom(d, reset) {
+            if (reset) zoom = 1;
+            else zoom = Math.max(0.3, Math.min(3, zoom + d));
+            canvas.style.transform = `scale(${zoom})`;
+            canvas.style.transformOrigin = '0 0';
+            document.getElementById('zoomInfo').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        function toggleGrid() {
+            asehoyGrid =!asehoyGrid;
+            document.getElementById('btnGrid').classList.toggle('mavita');
+        }
+        function toggleMifandona() {
+            asehoyMifandona =!asehoyMifandona;
+            document.getElementById('btnMifandona').classList.toggle('mavita');
+        }
+        function toggleZavatra() {
+            asehoyZavatra =!asehoyZavatra;
+            document.getElementById('btnZavatra').classList.toggle('mavita');
+        }
+
+                // ===== TILESET =====
+        document.getElementById('saryTileset').addEventListener('change', e => {
+            let file = e.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = e => {
+                tilesetImg = new Image();
+                tilesetImg.onload = () => {
+                    tetikasa.tileset.sary = file.name;
+                    tetikasa.tileset.sakany = tilesetImg.width;
+                    tetikasa.tileset.haavony = tilesetImg.height;
+                    tilesetCanvas.width = tilesetImg.width;
+                    tilesetCanvas.height = tilesetImg.height;
+                    tilesetCtx.drawImage(tilesetImg, 0, 0);
+
+                    tilesetCanvas.onclick = e => {
+                        let rect = tilesetCanvas.getBoundingClientRect();
+                        let x = Math.floor((e.clientX - rect.left) / tetikasa.tsirairay.sakany);
+                        let y = Math.floor((e.clientY - rect.top) / tetikasa.tsirairay.haavony);
+                        let cols = Math.floor(tetikasa.tileset.sakany / tetikasa.tsirairay.sakany);
+                        tileVoafidy = y * cols + x + 1;
+                        document.getElementById('idTile').textContent = tileVoafidy;
+
+                        let safidy = document.getElementById('tileSafidy');
+                        safidy.style.left = (x * tetikasa.tsirairay.sakany) + 'px';
+                        safidy.style.top = (y * tetikasa.tsirairay.haavony) + 'px';
+                        safidy.style.width = tetikasa.tsirairay.sakany + 'px';
+                        safidy.style.height = tetikasa.tsirairay.haavony + 'px';
+                    };
+                };
+                tilesetImg.src = e.target.result;
+                tetikasa.tileset.data = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // ===== SOSONA =====
+        function havaozyLisitraSosona() {
+            let html = '';
+            tetikasa.sosona.forEach((s, i) => {
+                html += `
+                    <div class="sosona-item ${i === sosonaAnkehitriny? 'voafidy' : ''}" onclick="safidioSosona(${i})">
+                        <input type="checkbox" ${s.hita? 'checked' : ''} onchange="toggleSosona(${i}, this.checked)" onclick="event.stopPropagation()">
+                        <input type="text" value="${s.anarana}" onchange="ovaAnaranaSosona(${i}, this.value)" onclick="event.stopPropagation()">
+                        <button onclick="event.stopPropagation(); miakatraSosona(${i})">↑</button>
+                        <button onclick="event.stopPropagation(); midinaSosona(${i})">↓</button>
+                    </div>
+                `;
+            });
+            document.getElementById('lisitraSosona').innerHTML = html;
+            document.getElementById('posSosona').textContent = tetikasa.sosona[sosonaAnkehitriny]?.anarana || 'Tsy misy';
+        }
+
+        function safidioSosona(i) {
+            sosonaAnkehitriny = i;
+            havaozyLisitraSosona();
+        }
+
+        function toggleSosona(i, hita) {
+            tetikasa.sosona[i].hita = hita;
+        }
+
+        function ovaAnaranaSosona(i, anarana) {
+            tetikasa.sosona[i].anarana = anarana;
+            havaozyLisitraSosona();
+        }
+
+        function ampioSosona() {
+            let anarana = prompt("Anaran'ny sosona vaovao:", "Sosona" + (tetikasa.sosona.length + 1));
+            if (anarana) {
+                tetikasa.sosona.push({
+                    anarana,
+                    data: new Array(tetikasa.sakany * tetikasa.haavony).fill(0),
+                    hita: true,
+                    mangarahara: 1
+                });
+                havaozyLisitraSosona();
+            }
+        }
+
+        function fafaoSosona() {
+            if (tetikasa.sosona.length <= 1) {
+                alert("Tsy afaka fafana ny sosona farany!");
+                return;
+            }
+            if (confirm("Hofafana tokoa ve ny sosona '" + tetikasa.sosona[sosonaAnkehitriny].anarana + "'?")) {
+                tetikasa.sosona.splice(sosonaAnkehitriny, 1);
+                sosonaAnkehitriny = Math.max(0, sosonaAnkehitriny - 1);
+                havaozyLisitraSosona();
+            }
+        }
+
+        function miakatraSosona(i) {
+            if (i === 0) return;
+            [tetikasa.sosona[i], tetikasa.sosona[i-1]] = [tetikasa.sosona[i-1], tetikasa.sosona[i]];
+            if (sosonaAnkehitriny === i) sosonaAnkehitriny--;
+            else if (sosonaAnkehitriny === i-1) sosonaAnkehitriny++;
+            havaozyLisitraSosona();
+        }
+
+        function midinaSosona(i) {
+            if (i === tetikasa.sosona.length - 1) return;
+            [tetikasa.sosona[i], tetikasa.sosona[i+1]] = [tetikasa.sosona[i+1], tetikasa.sosona[i]];
+            if (sosonaAnkehitriny === i) sosonaAnkehitriny++;
+            else if (sosonaAnkehitriny === i+1) sosonaAnkehitriny--;
+            havaozyLisitraSosona();
+        }
+
+        // ===== MIFANDONA =====
+        function fadioMifandona() {
+            if (confirm("Hofafana daholo ve ny collision rehetra?")) {
+                tetikasa.mifandona = [];
+            }
+        }
+
+        // ===== ZAVATRA =====
+        function fadioZavatra() {
+            if (confirm("Hofafana daholo ve ny zavatra rehetra?")) {
+                tetikasa.zavatra = [];
+            }
+        }
+
+        // ===== HETSIKA TILE =====
+        function sokafyModalHetsika() {
+            document.getElementById('modalHetsika').classList.add('misokatra');
+        }
+
+        function hidioModal(id) {
+            document.getElementById(id).classList.remove('misokatra');
+        }
+
+        function tehirizoHetsika() {
+            let id = parseInt(document.getElementById('hetsikaId').value);
+            let sary = document.getElementById('hetsikaSary').value.split(',').map(s => parseInt(s.trim()));
+            let hafainganam = parseInt(document.getElementById('hetsikaHafainganam').value);
+
+            if (!id || sary.length < 2) {
+                alert("Fenoy tsara ny ID sy Sary (farafahakeliny 2)!");
+                return;
+            }
+
+            let efa = tetikasa.hetsika.findIndex(h => h.id === id);
+            if (efa >= 0) tetikasa.hetsika[efa] = {id, sary, hafainganam};
+            else tetikasa.hetsika.push({id, sary, hafainganam});
+
+            havaozyLisitraHetsika();
+            hidioModal('modalHetsika');
+        }
+
+        function havaozyLisitraHetsika() {
+            let html = '';
+            tetikasa.hetsika.forEach((h, i) => {
+                html += `<div style="padding:5px;margin:3px 0;background:var(--btn);border-radius:4px;font-size:11px;">
+                    Tile ${h.id}: [${h.sary.join(',')}] @ ${h.hafainganam}ms
+                    <button onclick="fafaoHetsika(${i})" style="width:auto;padding:2px 6px;float:right;">×</button>
+                </div>`;
+            });
+            document.getElementById('lisitraHetsika').innerHTML = html;
+        }
+
+        function fafaoHetsika(i) {
+            tetikasa.hetsika.splice(i, 1);
+            havaozyLisitraHetsika();
+        }
+
+        // ===== UNDO/REDO =====
+        function tehirizoTantara() {
+            // Fafao ny redo raha manao hetsika vaovao
+            if (tantaraIdx < tantara.length - 1) {
+                tantara = tantara.slice(0, tantaraIdx + 1);
+            }
+            // Tehirizo snapshot
+            tantara.push(JSON.stringify({
+                sosona: tetikasa.sosona,
+                mifandona: tetikasa.mifandona,
+                zavatra: tetikasa.zavatra
+            }));
+            if (tantara.length > 50) tantara.shift(); // 50 max
+            else tantaraIdx++;
+        }
+
+        function manafoana() {
+            if (tantaraIdx > 0) {
+                tantaraIdx--;
+                let s = JSON.parse(tantara[tantaraIdx]);
+                tetikasa.sosona = s.sosona;
+                tetikasa.mifandona = s.mifandona;
+                tetikasa.zavatra = s.zavatra;
+                havaozyLisitraSosona();
+            }
+        }
+
+        function amerina() {
+            if (tantaraIdx < tantara.length - 1) {
+                tantaraIdx++;
+                let s = JSON.parse(tantara[tantaraIdx]);
+                tetikasa.sosona = s.sosona;
+                tetikasa.mifandona = s.mifandona;
+                tetikasa.zavatra = s.zavatra;
+                havaozyLisitraSosona();
+            }
+        }
+
+        // ===== RAKITRA =====
+        function vaovao() {
+            if (confirm("Hanary ny asa ankehitriny ve?")) {
+                tetikasa = {
+                    anarana: "Sarintany1",
+                    dikan: "1.0",
+                    sakany: 50,
+                    haavony: 40,
+                    tsirairay: {sakany: 32, haavony: 32},
+                    tileset: {sary: "", sakany: 0, haavony: 0, data: null},
+                    sosona: [{anarana: "Tany", data: [], hita: true, mangarahara: 1}],
+                    mifandona: [],
+                    hetsika: [],
+                    zavatra: []
+                };
+                document.getElementById('anarana').value = tetikasa.anarana;
+                document.getElementById('sakany').value = tetikasa.sakany;
+                document.getElementById('haavony').value = tetikasa.haavony;
+                document.getElementById('habeTile').value = tetikasa.tsirairay.sakany;
+                havaozyHabe();
+                tilesetImg = null;
+                tilesetCtx.clearRect(0, 0, tilesetCanvas.width, tilesetCanvas.height);
+                tantara = [];
+                tantaraIdx = -1;
+            }
+        }
+
+        function tehirizo() {
+            let data = JSON.stringify(tetikasa, null, 2);
+            let blob = new Blob([data], {type: 'application/json'});
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = tetikasa.anarana + '.hetsika';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function sokafy() {
+            document.getElementById('faylAmpidirina').click();
+        }
+
+        document.getElementById('faylAmpidirina').addEventListener('change', e => {
+            let file = e.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    tetikasa = JSON.parse(e.target.result);
+                    document.getElementById('anarana').value = tetikasa.anarana;
+                    document.getElementById('sakany').value = tetikasa.sakany;
+                    document.getElementById('haavony').value = tetikasa.haavony;
+                    document.getElementById('habeTile').value = tetikasa.tsirairay.sakany;
+                    havaozyHabe();
+
+                    // Avereno tileset raha base64
+                    if (tetikasa.tileset.data) {
+                        tilesetImg = new Image();
+                        tilesetImg.onload = () => {
+                            tilesetCanvas.width = tetikasa.tileset.sakany;
+                            tilesetCanvas.height = tetikasa.tileset.haavony;
+                            tilesetCtx.drawImage(tilesetImg, 0, 0);
+                        };
+                        tilesetImg.src = tetikasa.tileset.data;
+                    }
+
+                    havaozyLisitraSosona();
+                    havaozyLisitraHetsika();
+                    tantara = [];
+                    tantaraIdx = -1;
+                    alert("Voasokatra: " + tetikasa.anarana);
+                } catch (err) {
+                    alert("Tsy mety ny rakitra: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function manondrana(karazana) {
+            if (karazana === 'json') {
+                let data = JSON.stringify(tetikasa, null, 2);
+                let blob = new Blob([data], {type: 'application/json'});
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = tetikasa.anarana + '.json';
+                a.click();
+            } else if (karazana === 'png') {
+                let link = document.createElement('a');
+                link.download = tetikasa.anarana + '.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        }
+
+        function mamoronaAPK() {
+            alert("📱 Mamorona APK...\n\nDingana:\n1. Zip: hetsika.html + rakitrakatra.min.js + harena/\n2. Alefaso any: https://apk.rakitrakatra.ka\n3. Andraso 2 minitra\n4. Download APK\n\n(Ho avy tsy ho ela - ampiasao Capacitor aloha)");
+        }
+
+        // ===== FITAOVANA =====
+        function safidioFitaovana(f) {
+            fitaovana = f;
+            document.querySelectorAll('[id^="fit"]').forEach(b => b.classList.remove('mavita'));
+            document.querySelectorAll('[id^="btn"]').forEach(b => b.classList.remove('mavita'));
+            document.getElementById('fit' + f.charAt(0).toUpperCase() + f.slice(1))?.classList.add('mavita');
+            document.getElementById('btn' + f.charAt(0).toUpperCase() + f.slice(1))?.classList.add('mavita');
+        }
+
+        function toggle(el) {
+            el.parentElement.classList.toggle('misokatra');
+            el.querySelector('span').textContent = el.parentElement.classList.contains('misokatra')? '▼' : '▶';
+        }
+
+        // ===== ATOMBOHY =====
+        atombohy();
+        tehirizoTantara();
+    </script>
+</body>
+</html>
